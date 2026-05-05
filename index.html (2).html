@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gmail Manager</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f11;
+    --surface: #17171a;
+    --surface2: #1e1e22;
+    --surface3: #26262c;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #4f8ef7;
+    --accent2: #7b5cf0;
+    --text: #f0f0f2;
+    --muted: #888894;
+    --muted2: #555562;
+    --green: #34c77b;
+    --red: #f05252;
+    --amber: #f0a52a;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+    --radius: 10px;
+    --sidebar-w: 220px;
+  }
+
+  html, body { height: 100%; font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  /* ─── Auth Screen ─── */
+  #auth-screen {
+    height: 100vh; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 32px;
+  }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border2); border-radius: 16px;
+    padding: 48px; width: 420px; text-align: center;
+  }
+  .auth-logo { font-size: 40px; margin-bottom: 8px; }
+  .auth-title { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  .auth-sub { color: var(--muted); font-size: 13px; margin-bottom: 32px; line-height: 1.6; }
+  .config-section { text-align: left; margin-bottom: 24px; }
+  .config-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+  .config-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .config-input:focus { border-color: var(--accent); }
+  .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-connect {
+    width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: 8px;
+    color: #fff; font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-connect:hover { opacity: 0.88; }
+  .btn-connect:active { transform: scale(0.98); }
+  .auth-hint { font-size: 11px; color: var(--muted2); margin-top: 16px; line-height: 1.6; }
+  .auth-hint a { color: var(--accent); text-decoration: none; }
+
+  /* ─── App Layout ─── */
+  #app { display: none; height: 100vh; flex-direction: row; }
+  #app.visible { display: flex; }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .sidebar-header { padding: 18px 16px 12px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+  .sidebar-logo { font-size: 20px; }
+  .sidebar-title { font-size: 15px; font-weight: 600; }
+  .sidebar-user { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .user-email { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-name { font-size: 13px; font-weight: 500; }
+
+  .compose-btn {
+    margin: 12px 16px; padding: 10px 14px; background: var(--accent); border: none; border-radius: 8px;
+    color: #fff; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 8px; transition: opacity 0.2s;
+  }
+  .compose-btn:hover { opacity: 0.88; }
+
+  .nav-section { padding: 6px 8px; flex: 1; overflow-y: auto; }
+  .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); padding: 10px 8px 4px; font-weight: 500; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 7px;
+    cursor: pointer; font-size: 13px; color: var(--muted); transition: all 0.15s; position: relative;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--surface3); color: var(--text); font-weight: 500; }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; background: var(--accent); color: #fff; border-radius: 10px;
+    padding: 1px 7px; font-size: 11px; font-weight: 600; font-family: var(--mono);
+  }
+  .nav-badge.muted { background: var(--surface3); color: var(--muted); }
+
+  .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
+  .sign-out-btn {
+    width: 100%; padding: 8px; background: none; border: 1px solid var(--border); border-radius: 7px;
+    color: var(--muted); font-family: var(--font); font-size: 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .sign-out-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* ─── Email List ─── */
+  .email-list {
+    width: 340px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .list-header {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .list-title { font-size: 15px; font-weight: 600; }
+  .list-actions { display: flex; gap: 6px; }
+  .icon-btn {
+    background: none; border: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 6px;
+    font-size: 15px; transition: all 0.15s; line-height: 1;
+  }
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+
+  .search-bar {
+    padding: 10px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
+  }
+  .search-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 7px 12px; color: var(--text); font-family: var(--font); font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--muted2); }
+
+  .email-items { flex: 1; overflow-y: auto; }
+  .email-item {
+    padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer;
+    transition: background 0.12s; position: relative;
+  }
+  .email-item:hover { background: var(--surface2); }
+  .email-item.active { background: var(--surface3); }
+  .email-item.unread .email-from { font-weight: 600; color: var(--text); }
+  .email-item.unread::before {
+    content: ''; position: absolute; left: 6px; top: 50%; transform: translateY(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+  }
+  .email-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+  .email-from { font-size: 13px; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .email-date { font-size: 11px; color: var(--muted2); white-space: nowrap; }
+  .email-subject { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+  .email-preview { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .email-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
+  .tag { font-size: 10px; padding: 1px 7px; border-radius: 10px; font-weight: 500; }
+  .tag-inbox { background: rgba(79,142,247,0.15); color: #7cb0ff; }
+  .tag-sent { background: rgba(52,199,123,0.15); color: #5de09b; }
+  .tag-starred { background: rgba(240,165,42,0.15); color: #f5c060; }
+
+  /* Loading states */
+  .loading-state { padding: 40px; text-align: center; color: var(--muted); }
+  .spinner {
+    width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Email Detail ─── */
+  .email-detail { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .detail-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; color: var(--muted2);
+  }
+  .detail-empty-icon { font-size: 40px; opacity: 0.3; }
+
+  .detail-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; }
+  .detail-subject { font-size: 18px; font-weight: 600; flex: 1; margin-right: 16px; }
+  .detail-actions { display: flex; gap: 6px; }
+
+  .detail-meta { padding: 14px 24px; border-bottom: 1px solid var(--border); }
+  .detail-from { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 600; background: var(--surface3); color: var(--text); flex-shrink: 0;
+  }
+  .detail-from-info { flex: 1; min-width: 0; }
+  .detail-from-name { font-weight: 500; font-size: 13px; }
+  .detail-from-addr { font-size: 12px; color: var(--muted); }
+  .detail-from-date { font-size: 12px; color: var(--muted2); }
+
+  .detail-body { flex: 1; padding: 24px; overflow-y: auto; }
+  .detail-body-text { line-height: 1.75; white-space: pre-wrap; font-size: 14px; color: var(--text); }
+  .detail-body-html { line-height: 1.75; font-size: 14px; }
+  .detail-body-html a { color: var(--accent); }
+
+  .detail-attachments { padding: 12px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
+  .attachment {
+    display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; font-size: 12px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .attachment:hover { border-color: var(--border2); }
+  .attach-icon { font-size: 16px; }
+
+  /* ─── Compose Modal ─── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+    display: none; align-items: flex-end; justify-content: flex-end; padding: 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .compose-modal {
+    width: 540px; background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .compose-header {
+    padding: 12px 16px; background: var(--surface3); display: flex; align-items: center;
+    justify-content: space-between; font-size: 13px; font-weight: 500;
+  }
+  .compose-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
+  .compose-close:hover { color: var(--text); }
+  .compose-field { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .compose-field-label { font-size: 12px; color: var(--muted); min-width: 24px; }
+  .compose-field-input {
+    flex: 1; background: none; border: none; color: var(--text); font-family: var(--font);
+    font-size: 13px; outline: none;
+  }
+  .compose-field-input::placeholder { color: var(--muted2); }
+  .compose-body-area {
+    flex: 1; padding: 14px 16px; min-height: 200px; background: none; border: none;
+    color: var(--text); font-family: var(--font); font-size: 13px; outline: none; resize: none;
+    line-height: 1.7;
+  }
+  .compose-body-area::placeholder { color: var(--muted2); }
+  .compose-footer { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .send-btn {
+    padding: 8px 20px; background: var(--accent); border: none; border-radius: 7px;
+    color: #fff; font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; gap: 6px; transition: opacity 0.2s;
+  }
+  .send-btn:hover { opacity: 0.88; }
+  .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ─── Toast ─── */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+    background: var(--surface3); border: 1px solid var(--border2); border-radius: 8px;
+    padding: 10px 18px; font-size: 13px; z-index: 200; transition: transform 0.3s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: rgba(52,199,123,0.4); }
+  .toast.error { border-color: rgba(240,82,82,0.4); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">✉️</div>
+    <h1 class="auth-title">Gmail Manager</h1>
+    <p class="auth-sub">Connectez-vous à votre compte Google pour gérer vos emails directement depuis cette interface.</p>
+
+    <div class="config-section">
+      <div class="config-label">Client ID Google OAuth 2.0</div>
+      <input class="config-input" id="client-id-input" type="text" placeholder="123456789-abc.apps.googleusercontent.com" />
+    </div>
+    <div class="config-section">
+      <div class="config-label">Redirect URI (doit correspondre à Google Console)</div>
+      <input class="config-input" id="redirect-uri-input" type="text" id="redirect-uri-input" />
+    </div>
+
+    <button class="btn-connect" id="connect-btn">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M15.68 8.18c0-.57-.05-1.12-.14-1.64H8v3.1h4.3c-.19 1.01-.75 1.87-1.6 2.44v2.03h2.58c1.51-1.39 2.38-3.44 2.38-5.93z" fill="#4285F4"/>
+        <path d="M8 16c2.16 0 3.97-.72 5.29-1.94l-2.58-2.03c-.71.48-1.63.76-2.71.76-2.08 0-3.85-1.41-4.48-3.3H.86v2.1A8 8 0 008 16z" fill="#34A853"/>
+        <path d="M3.52 9.49A4.8 4.8 0 013.27 8c0-.52.09-1.02.25-1.49V4.41H.86A8 8 0 000 8c0 1.29.31 2.51.86 3.59l2.66-2.1z" fill="#FBBC05"/>
+        <path d="M8 3.18c1.17 0 2.22.4 3.05 1.2l2.28-2.28C11.97.72 10.16 0 8 0A8 8 0 00.86 4.41l2.66 2.1C4.15 4.59 5.92 3.18 8 3.18z" fill="#EA4335"/>
+      </svg>
+      Se connecter avec Google
+    </button>
+
+    <p class="auth-hint">
+      Vous avez besoin d'un <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Client ID OAuth 2.0</a> dans Google Cloud Console.<br>
+      Activez l'API Gmail et ajoutez cette URL comme redirect URI autorisée.
+    </p>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">✉️</span>
+      <span class="sidebar-title">Gmail</span>
+    </div>
+    <div class="sidebar-user">
+      <div class="user-name" id="user-name">—</div>
+      <div class="user-email" id="user-email">—</div>
+    </div>
+
+    <button class="compose-btn" id="compose-btn-sidebar">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 13L5 9.5 9 5.5 13 1M1 13H5M1 13V9.5M13 1L9 5.5M13 1L9.5 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Nouveau message
+    </button>
+
+    <nav class="nav-section">
+      <div class="nav-label">Boîtes</div>
+      <div class="nav-item active" data-folder="INBOX" onclick="selectFolder(this)">
+        <span class="nav-icon">📥</span> Boîte de réception
+        <span class="nav-badge" id="badge-inbox">—</span>
+      </div>
+      <div class="nav-item" data-folder="SENT" onclick="selectFolder(this)">
+        <span class="nav-icon">📤</span> Envoyés
+      </div>
+      <div class="nav-item" data-folder="STARRED" onclick="selectFolder(this)">
+        <span class="nav-icon">⭐</span> Suivis
+      </div>
+      <div class="nav-item" data-folder="DRAFT" onclick="selectFolder(this)">
+        <span class="nav-icon">📝</span> Brouillons
+        <span class="nav-badge muted" id="badge-drafts">—</span>
+      </div>
+      <div class="nav-item" data-folder="SPAM" onclick="selectFolder(this)">
+        <span class="nav-icon">🚫</span> Spam
+      </div>
+      <div class="nav-item" data-folder="TRASH" onclick="selectFolder(this)">
+        <span class="nav-icon">🗑️</span> Corbeille
+      </div>
+
+      <div class="nav-label" style="margin-top:12px;">Actions</div>
+      <div class="nav-item" onclick="refreshEmails()">
+        <span class="nav-icon">🔄</span> Actualiser
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="sign-out-btn" onclick="signOut()">Se déconnecter</button>
+    </div>
+  </aside>
+
+  <!-- Email List -->
+  <div class="email-list">
+    <div class="list-header">
+      <span class="list-title" id="folder-title">Boîte de réception</span>
+      <div class="list-actions">
+        <button class="icon-btn" title="Tout marquer lu" onclick="markAllRead()">✓</button>
+        <button class="icon-btn" title="Actualiser" onclick="refreshEmails()">↻</button>
+      </div>
+    </div>
+    <div class="search-bar">
+      <input class="search-input" id="search-input" type="text" placeholder="Rechercher dans les emails..." oninput="filterEmails(this.value)" />
+    </div>
+    <div class="email-items" id="email-items">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        Chargement…
+      </div>
+    </div>
+  </div>
+
+  <!-- Email Detail -->
+  <div class="email-detail" id="email-detail">
+    <div class="detail-empty">
+      <div class="detail-empty-icon">✉️</div>
+      <span>Sélectionnez un email</span>
+    </div>
+  </div>
+</div>
+
+<!-- Compose Modal -->
+<div class="modal-overlay" id="compose-modal">
+  <div class="compose-modal">
+    <div class="compose-header">
+      <span>Nouveau message</span>
+      <button class="compose-close" onclick="closeCompose()">×</button>
+    </div>
+    <div class="compose-field">
+      <span class="compose-field-label">À</span>
+      <input class="compose-field-input" id="compose-to" type="email" placeholder="destinataire@exemple.com" />
+    </div>
+    <div class="compose-field">
+      <span class="compose-field-label">CC</span>
+      <input class="compose-field-input" id="compose-cc" type="email" placeholder="optionnel" />
+    </div>
+    <div class="compose-field">
+      <span class="compose-field-label">Objet</span>
+      <input class="compose-field-input" id="compose-subject" type="text" placeholder="Sujet de votre message" />
+    </div>
+    <textarea class="compose-body-area" id="compose-body" placeholder="Rédigez votre message…"></textarea>
+    <div class="compose-footer">
+      <button class="send-btn" id="send-btn" onclick="sendEmail()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11.5 1.5L1.5 6.5L6 7.5L7 12L11.5 1.5Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        Envoyer
+      </button>
+      <button class="icon-btn" onclick="closeCompose()" title="Annuler">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────
+const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
+
+let accessToken = null;
+let emails = [];
+let currentFolder = 'INBOX';
+let currentEmail = null;
+let replyMode = false;
+let replyTo = null;
+
+// ─── INIT ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const redirect = document.getElementById('redirect-uri-input');
+  redirect.value = 'https://jeremienoah2006-maker.github.io/gmail-manager/';
+
+  const savedCid = localStorage.getItem('gmail_client_id');
+  if (savedCid) document.getElementById('client-id-input').value = savedCid;
+
+  // Check if returning from OAuth
+  const hash = window.location.hash;
+  const params = new URLSearchParams(hash.replace('#', '?'));
+  const token = params.get('access_token');
+  if (token) {
+    accessToken = token;
+    window.location.hash = '';
+    initApp();
+  }
+
+  document.getElementById('connect-btn').addEventListener('click', startOAuth);
+});
+
+function startOAuth() {
+  const clientId = document.getElementById('client-id-input').value.trim();
+  const redirectUri = document.getElementById('redirect-uri-input').value.trim();
+
+  if (!clientId) { showToast('Veuillez entrer votre Client ID', 'error'); return; }
+
+  localStorage.setItem('gmail_client_id', clientId);
+  localStorage.setItem('gmail_redirect', redirectUri);
+
+  const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  authUrl.searchParams.set('client_id', clientId);
+  authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('response_type', 'token');
+  authUrl.searchParams.set('scope', SCOPES);
+  authUrl.searchParams.set('prompt', 'select_account');
+  authUrl.searchParams.set('include_granted_scopes', 'true');
+
+  window.location.href = authUrl.toString();
+}
+
+async function initApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('compose-btn-sidebar').addEventListener('click', openCompose);
+
+  await loadUserProfile();
+  await loadEmails();
+  await loadBadges();
+}
+
+// ─── GMAIL API ───────────────────────────────────────────
+async function gmailFetch(path, options = {}) {
+  const res = await fetch(GMAIL_API + path, {
+    ...options,
+    headers: {
+      'Authorization': 'Bearer ' + accessToken,
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    }
+  });
+  if (res.status === 401) { showToast('Session expirée. Reconnectez-vous.', 'error'); signOut(); return null; }
+  if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'API error'); }
+  return res.json();
+}
+
+async function loadUserProfile() {
+  try {
+    const data = await gmailFetch('/profile');
+    if (!data) return;
+    document.getElementById('user-email').textContent = data.emailAddress;
+    const name = data.emailAddress.split('@')[0];
+    document.getElementById('user-name').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  } catch(e) { console.error(e); }
+}
+
+async function loadBadges() {
+  try {
+    const [inboxData, draftData] = await Promise.all([
+      gmailFetch('/labels/INBOX'),
+      gmailFetch('/labels/DRAFT')
+    ]);
+    if (inboxData) document.getElementById('badge-inbox').textContent = inboxData.messagesUnread || 0;
+    if (draftData) document.getElementById('badge-drafts').textContent = draftData.messagesTotal || 0;
+  } catch(e) {}
+}
+
+async function loadEmails() {
+  const container = document.getElementById('email-items');
+  container.innerHTML = '<div class="loading-state"><div class="spinner"></div>Chargement…</div>';
+
+  try {
+    const labelId = currentFolder;
+    const data = await gmailFetch(`/messages?labelIds=${labelId}&maxResults=50`);
+    if (!data || !data.messages) { container.innerHTML = '<div class="loading-state">Aucun email</div>'; return; }
+
+    const details = await Promise.all(
+      data.messages.slice(0, 30).map(m => gmailFetch(`/messages/${m.id}?format=metadata&metadataHeaders=From,To,Subject,Date`))
+    );
+
+    emails = details.filter(Boolean).map(msg => {
+      const headers = {};
+      (msg.payload?.headers || []).forEach(h => headers[h.name] = h.value);
+      return {
+        id: msg.id,
+        threadId: msg.threadId,
+        from: headers['From'] || '',
+        to: headers['To'] || '',
+        subject: headers['Subject'] || '(sans objet)',
+        date: headers['Date'] || '',
+        snippet: msg.snippet || '',
+        unread: (msg.labelIds || []).includes('UNREAD'),
+        starred: (msg.labelIds || []).includes('STARRED'),
+        labels: msg.labelIds || []
+      };
+    });
+
+    renderEmailList(emails);
+  } catch(e) {
+    container.innerHTML = `<div class="loading-state" style="color:var(--red)">Erreur: ${e.message}</div>`;
+  }
+}
+
+function renderEmailList(list) {
+  const container = document.getElementById('email-items');
+  if (!list.length) { container.innerHTML = '<div class="loading-state">Aucun email</div>'; return; }
+
+  container.innerHTML = list.map(email => {
+    const fromName = parseFromName(email.from);
+    const dateStr = formatDate(email.date);
+    const tags = [];
+    if (email.starred) tags.push('<span class="tag tag-starred">⭐</span>');
+
+    return `<div class="email-item ${email.unread ? 'unread' : ''}" data-id="${email.id}" onclick="openEmail('${email.id}')">
+      <div class="email-item-top">
+        <span class="email-from">${escHtml(fromName)}</span>
+        <span class="email-date">${dateStr}</span>
+      </div>
+      <div class="email-subject">${escHtml(email.subject)}</div>
+      <div class="email-preview">${escHtml(email.snippet)}</div>
+      ${tags.length ? `<div class="email-tags">${tags.join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function filterEmails(query) {
+  if (!query) { renderEmailList(emails); return; }
+  const q = query.toLowerCase();
+  const filtered = emails.filter(e =>
+    e.from.toLowerCase().includes(q) ||
+    e.subject.toLowerCase().includes(q) ||
+    e.snippet.toLowerCase().includes(q)
+  );
+  renderEmailList(filtered);
+}
+
+async function openEmail(id) {
+  document.querySelectorAll('.email-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+
+  const detail = document.getElementById('email-detail');
+  detail.innerHTML = '<div class="loading-state" style="flex:1;display:flex;align-items:center;justify-content:center;"><div class="spinner"></div></div>';
+
+  try {
+    const msg = await gmailFetch(`/messages/${id}?format=full`);
+    if (!msg) return;
+
+    const headers = {};
+    (msg.payload?.headers || []).forEach(h => headers[h.name] = h.value);
+
+    const subject = headers['Subject'] || '(sans objet)';
+    const from = headers['From'] || '';
+    const to = headers['To'] || '';
+    const date = headers['Date'] || '';
+    const fromName = parseFromName(from);
+    const fromEmail = parseFromEmail(from);
+    const initials = fromName.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) || '?';
+    const avatarColor = stringToColor(fromName);
+
+    const body = extractBody(msg.payload);
+    const attachments = findAttachments(msg.payload);
+
+    currentEmail = { id, from, to, subject, body };
+
+    // Mark as read
+    const emailItem = document.querySelector(`.email-item[data-id="${id}"]`);
+    if (emailItem && emailItem.classList.contains('unread')) {
+      emailItem.classList.remove('unread');
+      gmailFetch(`/messages/${id}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: ['UNREAD'] }) }).catch(()=>{});
+    }
+
+    detail.innerHTML = `
+      <div class="detail-header">
+        <div class="detail-subject">${escHtml(subject)}</div>
+        <div class="detail-actions">
+          <button class="icon-btn" title="Répondre" onclick="openReply('${id}')">↩</button>
+          <button class="icon-btn" title="Transférer" onclick="openForward('${id}')">↪</button>
+          <button class="icon-btn" title="Étoile" onclick="toggleStar('${id}')">⭐</button>
+          <button class="icon-btn" title="Supprimer" onclick="deleteEmail('${id}')" style="color:var(--red)">🗑️</button>
+        </div>
+      </div>
+      <div class="detail-meta">
+        <div class="detail-from">
+          <div class="avatar" style="background:${avatarColor.bg};color:${avatarColor.text}">${initials}</div>
+          <div class="detail-from-info">
+            <div class="detail-from-name">${escHtml(fromName)}</div>
+            <div class="detail-from-addr">${escHtml(fromEmail)}</div>
+          </div>
+          <div class="detail-from-date">${formatDateFull(date)}</div>
+        </div>
+        ${to ? `<div style="margin-top:6px;font-size:12px;color:var(--muted)">À : ${escHtml(to)}</div>` : ''}
+      </div>
+      <div class="detail-body" id="detail-body-container">
+        <div class="detail-body-text">${escHtml(body.text)}</div>
+      </div>
+      ${attachments.length ? `<div class="detail-attachments">${attachments.map(a => `
+        <div class="attachment"><span class="attach-icon">📎</span><span>${escHtml(a.filename)}</span></div>
+      `).join('')}</div>` : ''}
+    `;
+
+  } catch(e) {
+    detail.innerHTML = `<div class="loading-state" style="color:var(--red)">Erreur: ${e.message}</div>`;
+  }
+}
+
+// ─── COMPOSE / REPLY ───────────────────────────────────────────
+function openCompose(replyData = null) {
+  replyMode = !!replyData;
+  replyTo = replyData;
+  document.getElementById('compose-to').value = replyData?.to || '';
+  document.getElementById('compose-cc').value = '';
+  document.getElementById('compose-subject').value = replyData?.subject ? 'Re: ' + replyData.subject.replace(/^Re:\s*/i,'') : '';
+  document.getElementById('compose-body').value = replyData?.body ? '\n\n---\n' + replyData.body : '';
+  document.getElementById('compose-modal').classList.add('open');
+  document.getElementById('compose-to').focus();
+}
+
+function openReply(id) {
+  const email = emails.find(e => e.id === id) || currentEmail;
+  if (!email) return;
+  openCompose({ to: parseFromEmail(email.from), subject: email.subject, body: email.snippet });
+}
+
+function openForward(id) {
+  const email = emails.find(e => e.id === id) || currentEmail;
+  if (!email) return;
+  openCompose({ subject: 'Fwd: ' + email.subject, body: email.snippet });
+}
+
+function closeCompose() {
+  document.getElementById('compose-modal').classList.remove('open');
+}
+
+async function sendEmail() {
+  const to = document.getElementById('compose-to').value.trim();
+  const cc = document.getElementById('compose-cc').value.trim();
+  const subject = document.getElementById('compose-subject').value.trim();
+  const body = document.getElementById('compose-body').value.trim();
+
+  if (!to) { showToast('Veuillez indiquer un destinataire', 'error'); return; }
+  if (!subject) { showToast('Veuillez indiquer un objet', 'error'); return; }
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true; btn.textContent = 'Envoi…';
+
+  try {
+    let headers = `To: ${to}\r\nSubject: ${subject}\r\n`;
+    if (cc) headers += `Cc: ${cc}\r\n`;
+    headers += `Content-Type: text/plain; charset=utf-8\r\n\r\n`;
+
+    const rawEmail = headers + body;
+    const encoded = btoa(unescape(encodeURIComponent(rawEmail))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+    await gmailFetch('/messages/send', { method: 'POST', body: JSON.stringify({ raw: encoded }) });
+
+    showToast('Email envoyé avec succès ✓', 'success');
+    closeCompose();
+    if (currentFolder === 'SENT') loadEmails();
+  } catch(e) {
+    showToast('Erreur d\'envoi: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11.5 1.5L1.5 6.5L6 7.5L7 12L11.5 1.5Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg> Envoyer';
+  }
+}
+
+// ─── ACTIONS ───────────────────────────────────────────
+async function deleteEmail(id) {
+  try {
+    await gmailFetch(`/messages/${id}/trash`, { method: 'POST' });
+    emails = emails.filter(e => e.id !== id);
+    renderEmailList(emails);
+    document.getElementById('email-detail').innerHTML = '<div class="detail-empty"><div class="detail-empty-icon">🗑️</div><span>Email supprimé</span></div>';
+    showToast('Email déplacé dans la corbeille', 'success');
+  } catch(e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+async function toggleStar(id) {
+  const email = emails.find(e => e.id === id);
+  if (!email) return;
+  const add = !email.starred;
+  try {
+    await gmailFetch(`/messages/${id}/modify`, {
+      method: 'POST',
+      body: JSON.stringify({ addLabelIds: add ? ['STARRED'] : [], removeLabelIds: add ? [] : ['STARRED'] })
+    });
+    email.starred = add;
+    showToast(add ? 'Email étoilé ⭐' : 'Étoile retirée');
+  } catch(e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+async function markAllRead() {
+  const unread = emails.filter(e => e.unread);
+  if (!unread.length) { showToast('Aucun email non lu'); return; }
+  try {
+    await Promise.all(unread.map(e =>
+      gmailFetch(`/messages/${e.id}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: ['UNREAD'] }) })
+    ));
+    unread.forEach(e => e.unread = false);
+    renderEmailList(emails);
+    showToast(`${unread.length} emails marqués lus ✓`, 'success');
+    loadBadges();
+  } catch(e) { showToast('Erreur: ' + e.message, 'error'); }
+}
+
+function selectFolder(el) {
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+  currentFolder = el.dataset.folder;
+  const titles = { INBOX:'Boîte de réception', SENT:'Envoyés', STARRED:'Suivis', DRAFT:'Brouillons', SPAM:'Spam', TRASH:'Corbeille' };
+  document.getElementById('folder-title').textContent = titles[currentFolder] || currentFolder;
+  document.getElementById('email-detail').innerHTML = '<div class="detail-empty"><div class="detail-empty-icon">✉️</div><span>Sélectionnez un email</span></div>';
+  loadEmails();
+}
+
+function refreshEmails() {
+  loadEmails();
+  loadBadges();
+  showToast('Actualisation…');
+}
+
+function signOut() {
+  accessToken = null;
+  emails = [];
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display = '';
+}
+
+// ─── HELPERS ───────────────────────────────────────────
+function extractBody(payload) {
+  let text = '';
+  function walk(part) {
+    if (!part) return;
+    if (part.mimeType === 'text/plain' && part.body?.data) {
+      text = atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+    } else if (part.parts) { part.parts.forEach(walk); }
+  }
+  walk(payload);
+  if (!text && payload?.body?.data) {
+    try { text = atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/')); } catch(e){}
+  }
+  // Decode UTF-8
+  try { text = decodeURIComponent(escape(text)); } catch(e) {}
+  return { text: text || '(Corps non disponible)' };
+}
+
+function findAttachments(payload) {
+  const attachments = [];
+  function walk(part) {
+    if (!part) return;
+    if (part.filename && part.filename.length > 0) attachments.push({ filename: part.filename, mimeType: part.mimeType });
+    if (part.parts) part.parts.forEach(walk);
+  }
+  walk(payload);
+  return attachments;
+}
+
+function parseFromName(from) {
+  const m = from.match(/^"?([^"<]+)"?\s*</);
+  if (m) return m[1].trim();
+  const m2 = from.match(/^([^@<]+)/);
+  return m2 ? m2[1].trim() : from;
+}
+
+function parseFromEmail(from) {
+  const m = from.match(/<([^>]+)>/);
+  return m ? m[1] : from;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 86400000 && d.getDate() === now.getDate()) {
+    return d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+  }
+  if (diff < 7*86400000) {
+    return d.toLocaleDateString('fr-FR', { weekday:'short' });
+  }
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'short' });
+}
+
+function formatDateFull(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleString('fr-FR', { dateStyle:'long', timeStyle:'short' });
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function stringToColor(str) {
+  const colors = [
+    { bg:'rgba(79,142,247,0.18)', text:'#7cb0ff' },
+    { bg:'rgba(123,92,240,0.18)', text:'#a880f7' },
+    { bg:'rgba(52,199,123,0.18)', text:'#5de09b' },
+    { bg:'rgba(240,165,42,0.18)', text:'#f5c060' },
+    { bg:'rgba(240,82,82,0.18)', text:'#f07070' },
+  ];
+  let hash = 0;
+  for (let c of str) hash = (hash * 31 + c.charCodeAt(0)) & 0xffff;
+  return colors[hash % colors.length];
+}
+
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
