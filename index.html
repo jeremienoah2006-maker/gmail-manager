@@ -286,6 +286,63 @@
   }
   .ai-copy-btn:hover { background: var(--ai-bg); }
 
+  /* ─── AI Sort ─── */
+  .ai-sort-bar {
+    padding: 8px 12px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ai-sort-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border: 1px solid var(--ai-border);
+    background: var(--ai-bg); border-radius: 20px;
+    color: var(--ai); font-family: var(--font); font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  }
+  .ai-sort-btn:hover { background: rgba(167,139,250,0.18); border-color: rgba(167,139,250,0.4); }
+  .ai-sort-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ai-sort-active-label {
+    font-size: 11px; color: var(--muted); flex: 1;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ai-sort-reset {
+    background: none; border: none; color: var(--muted2); cursor: pointer;
+    font-size: 13px; padding: 2px 4px; border-radius: 4px; line-height: 1;
+    transition: color 0.15s;
+  }
+  .ai-sort-reset:hover { color: var(--text); }
+
+  .ai-sort-popup {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15,15,17,0.92); backdrop-filter: blur(8px);
+    z-index: 50; display: none; flex-direction: column;
+    padding: 16px; gap: 10px;
+  }
+  .ai-sort-popup.open { display: flex; }
+  .ai-sort-popup-title {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ai); font-weight: 600; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .ai-sort-popup-close {
+    background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px;
+  }
+  .ai-sort-popup-close:hover { color: var(--text); }
+  .ai-sort-option {
+    padding: 12px 14px; border: 1px solid var(--ai-border); border-radius: 10px;
+    background: var(--ai-bg); cursor: pointer; transition: all 0.15s;
+  }
+  .ai-sort-option:hover { background: rgba(167,139,250,0.16); border-color: rgba(167,139,250,0.4); transform: translateX(3px); }
+  .ai-sort-option-title {
+    font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 3px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .ai-sort-option-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .ai-sort-loading {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 12px; color: var(--muted);
+  }
+  .ai-sort-loading .spinner { border-top-color: var(--ai); border-color: var(--ai-border); }
+
   /* ─── Compose Modal ─── */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
@@ -457,7 +514,7 @@
   </aside>
 
   <!-- Email List -->
-  <div class="email-list">
+  <div class="email-list" style="position:relative;">
     <div class="list-header">
       <span class="list-title" id="folder-title">Boîte de réception</span>
       <div class="list-actions">
@@ -468,6 +525,28 @@
     <div class="search-bar">
       <input class="search-input" id="search-input" type="text" placeholder="Rechercher dans les emails..." oninput="filterEmails(this.value)" />
     </div>
+    <div class="ai-sort-bar" id="ai-sort-bar">
+      <button class="ai-sort-btn" id="ai-sort-btn" onclick="openAiSort()">
+        <span>✦</span> Tri IA
+      </button>
+      <span class="ai-sort-active-label" id="ai-sort-label"></span>
+      <button class="ai-sort-reset" id="ai-sort-reset" onclick="resetSort()" title="Réinitialiser le tri" style="display:none">✕</button>
+    </div>
+
+    <!-- AI Sort Popup -->
+    <div class="ai-sort-popup" id="ai-sort-popup">
+      <div class="ai-sort-popup-title">
+        <span>✦ Suggestions de tri</span>
+        <button class="ai-sort-popup-close" onclick="closeAiSort()">×</button>
+      </div>
+      <div id="ai-sort-options">
+        <div class="ai-sort-loading">
+          <div class="spinner"></div>
+          <span>L'IA analyse vos emails…</span>
+        </div>
+      </div>
+    </div>
+
     <div class="email-items" id="email-items">
       <div class="loading-state">
         <div class="spinner"></div>
@@ -825,6 +904,116 @@ async function callClaude(prompt, systemPrompt = '') {
 
   const data = await res.json();
   return data.choices?.[0]?.message?.content || '';
+}
+
+// ─── AI SORT ───────────────────────────────────────────
+async function openAiSort() {
+  if (!anthropicKey) { showToast('Clé API Groq requise pour le tri IA', 'error'); return; }
+  if (!emails.length) { showToast('Aucun email à trier', 'error'); return; }
+
+  const popup = document.getElementById('ai-sort-popup');
+  const optionsEl = document.getElementById('ai-sort-options');
+  const btn = document.getElementById('ai-sort-btn');
+
+  popup.classList.add('open');
+  btn.disabled = true;
+  optionsEl.innerHTML = `<div class="ai-sort-loading"><div class="spinner"></div><span>L'IA analyse vos emails…</span></div>`;
+
+  try {
+    // Build a compact summary of current emails for the AI
+    const emailsSummary = emails.slice(0, 20).map((e, i) =>
+      `${i+1}. De: ${parseFromName(e.from)} | Objet: ${e.subject} | ${e.unread ? 'Non lu' : 'Lu'} | ${e.starred ? 'Étoilé' : ''} | ${formatDate(e.date)}`
+    ).join('\n');
+
+    const result = await callClaude(
+      `Voici la liste des emails dans la boîte mail :\n\n${emailsSummary}\n\nPropose 3 façons intelligentes de trier ces emails.`,
+      `Tu es un assistant email. Analyse la liste d'emails et propose exactement 3 suggestions de tri pertinentes et variées.
+Réponds UNIQUEMENT avec un JSON valide sans markdown :
+{
+  "suggestions": [
+    {
+      "emoji": "🔥",
+      "titre": "Titre court (max 4 mots)",
+      "description": "Explication courte en 1 phrase",
+      "critere": "unread|starred|date_asc|date_desc|sender|subject_alpha|important"
+    },
+    { ... },
+    { ... }
+  ]
+}
+Critères disponibles : unread (non lus en premier), starred (étoilés en premier), date_desc (plus récents), date_asc (plus anciens), sender (par expéditeur A-Z), subject_alpha (objet A-Z), important (non lus + étoilés).
+Choisis les 3 critères les plus pertinents selon le contenu réel des emails.`
+    );
+
+    const clean = result.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    const suggestions = parsed.suggestions || [];
+
+    optionsEl.innerHTML = suggestions.map((s, i) => `
+      <div class="ai-sort-option" onclick="applyAiSort('${s.critere}', '${escHtml(s.titre)}')">
+        <div class="ai-sort-option-title">
+          <span>${s.emoji}</span> ${escHtml(s.titre)}
+        </div>
+        <div class="ai-sort-option-desc">${escHtml(s.description)}</div>
+      </div>
+    `).join('');
+
+  } catch(e) {
+    optionsEl.innerHTML = `<div style="color:var(--red);font-size:12px;padding:12px;">Erreur : ${escHtml(e.message)}</div>`;
+  }
+
+  btn.disabled = false;
+}
+
+function closeAiSort() {
+  document.getElementById('ai-sort-popup').classList.remove('open');
+}
+
+function applyAiSort(critere, titre) {
+  closeAiSort();
+
+  let sorted = [...emails];
+
+  switch(critere) {
+    case 'unread':
+      sorted.sort((a, b) => (b.unread ? 1 : 0) - (a.unread ? 1 : 0));
+      break;
+    case 'starred':
+      sorted.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+      break;
+    case 'date_desc':
+      sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+      break;
+    case 'date_asc':
+      sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+      break;
+    case 'sender':
+      sorted.sort((a, b) => parseFromName(a.from).localeCompare(parseFromName(b.from)));
+      break;
+    case 'subject_alpha':
+      sorted.sort((a, b) => a.subject.localeCompare(b.subject));
+      break;
+    case 'important':
+      sorted.sort((a, b) => {
+        const scoreA = (a.unread ? 2 : 0) + (a.starred ? 1 : 0);
+        const scoreB = (b.unread ? 2 : 0) + (b.starred ? 1 : 0);
+        return scoreB - scoreA;
+      });
+      break;
+  }
+
+  renderEmailList(sorted);
+
+  document.getElementById('ai-sort-label').textContent = titre;
+  document.getElementById('ai-sort-reset').style.display = '';
+  showToast(`Tri appliqué : ${titre} ✦`, 'success');
+}
+
+function resetSort() {
+  renderEmailList(emails);
+  document.getElementById('ai-sort-label').textContent = '';
+  document.getElementById('ai-sort-reset').style.display = 'none';
+  showToast('Tri réinitialisé');
 }
 
 function setAiLoading(btnId) {
