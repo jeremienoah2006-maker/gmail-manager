@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gmail Manager</title>
+<title>Gmail Manager + IA</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
@@ -24,6 +24,9 @@
     --green: #34c77b;
     --red: #f05252;
     --amber: #f0a52a;
+    --ai: #a78bfa;
+    --ai-bg: rgba(167,139,250,0.08);
+    --ai-border: rgba(167,139,250,0.2);
     --font: 'DM Sans', sans-serif;
     --mono: 'DM Mono', monospace;
     --radius: 10px;
@@ -38,7 +41,7 @@
   }
   .auth-card {
     background: var(--surface); border: 1px solid var(--border2); border-radius: 16px;
-    padding: 48px; width: 420px; text-align: center;
+    padding: 48px; width: 460px; text-align: center;
   }
   .auth-logo { font-size: 40px; margin-bottom: 8px; }
   .auth-title { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
@@ -51,7 +54,6 @@
     transition: border-color 0.2s;
   }
   .config-input:focus { border-color: var(--accent); }
-  .config-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .btn-connect {
     width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: 8px;
     color: #fff; font-family: var(--font); font-size: 14px; font-weight: 600; cursor: pointer;
@@ -59,6 +61,15 @@
   }
   .btn-connect:hover { opacity: 0.88; }
   .btn-connect:active { transform: scale(0.98); }
+
+  /* AI Key section */
+  .ai-section-divider { display: flex; align-items: center; gap: 10px; margin: 20px 0; }
+  .ai-section-divider::before, .ai-section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .ai-section-label { font-size: 11px; color: var(--muted2); white-space: nowrap; }
+  .ai-config-section { text-align: left; margin-bottom: 24px; background: var(--ai-bg); border: 1px solid var(--ai-border); border-radius: 10px; padding: 14px; }
+  .ai-config-section .config-label { color: var(--ai); }
+  .ai-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; background: var(--ai-bg); border: 1px solid var(--ai-border); color: var(--ai); border-radius: 20px; padding: 3px 10px; margin-bottom: 12px; }
+
   .auth-hint { font-size: 11px; color: var(--muted2); margin-top: 16px; line-height: 1.6; }
   .auth-hint a { color: var(--accent); text-decoration: none; }
 
@@ -109,7 +120,7 @@
 
   /* ─── Email List ─── */
   .email-list {
-    width: 340px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0;
+    width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0;
   }
   .list-header {
     padding: 14px 16px; border-bottom: 1px solid var(--border);
@@ -147,21 +158,24 @@
     width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
   }
   .email-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
-  .email-from { font-size: 13px; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .email-from { font-size: 13px; color: var(--muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
   .email-date { font-size: 11px; color: var(--muted2); white-space: nowrap; }
   .email-subject { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
   .email-preview { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .email-tags { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
   .tag { font-size: 10px; padding: 1px 7px; border-radius: 10px; font-weight: 500; }
-  .tag-inbox { background: rgba(79,142,247,0.15); color: #7cb0ff; }
-  .tag-sent { background: rgba(52,199,123,0.15); color: #5de09b; }
   .tag-starred { background: rgba(240,165,42,0.15); color: #f5c060; }
+  .tag-ai { background: var(--ai-bg); color: var(--ai); border: 1px solid var(--ai-border); }
 
   /* Loading states */
   .loading-state { padding: 40px; text-align: center; color: var(--muted); }
   .spinner {
     width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--accent);
     border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px;
+  }
+  .spinner-sm {
+    width: 14px; height: 14px; border: 1.5px solid var(--ai-border); border-top-color: var(--ai);
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -188,10 +202,11 @@
   .detail-from-addr { font-size: 12px; color: var(--muted); }
   .detail-from-date { font-size: 12px; color: var(--muted2); }
 
-  .detail-body { flex: 1; padding: 24px; overflow-y: auto; }
+  /* ─── Detail Content Area (scrollable) ─── */
+  .detail-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  .detail-body { padding: 24px; }
   .detail-body-text { line-height: 1.75; white-space: pre-wrap; font-size: 14px; color: var(--text); }
-  .detail-body-html { line-height: 1.75; font-size: 14px; }
-  .detail-body-html a { color: var(--accent); }
 
   .detail-attachments { padding: 12px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; }
   .attachment {
@@ -202,6 +217,75 @@
   .attachment:hover { border-color: var(--border2); }
   .attach-icon { font-size: 16px; }
 
+  /* ─── AI Panel ─── */
+  .ai-panel {
+    margin: 0 24px 24px;
+    background: var(--ai-bg);
+    border: 1px solid var(--ai-border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .ai-panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--ai-border);
+  }
+  .ai-panel-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--ai); text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .ai-sparkle { font-size: 14px; }
+  .ai-actions { display: flex; gap: 6px; }
+  .ai-btn {
+    padding: 5px 12px; border-radius: 6px; border: 1px solid var(--ai-border);
+    background: rgba(167,139,250,0.1); color: var(--ai); font-family: var(--font);
+    font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .ai-btn:hover { background: rgba(167,139,250,0.2); border-color: rgba(167,139,250,0.4); }
+  .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ai-btn.active { background: rgba(167,139,250,0.25); border-color: rgba(167,139,250,0.5); }
+
+  .ai-result {
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text);
+    display: none;
+  }
+  .ai-result.visible { display: block; }
+  .ai-result-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ai); margin-bottom: 8px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ai-result-text { color: var(--text); line-height: 1.7; }
+  .ai-result-text.muted { color: var(--muted); font-style: italic; }
+
+  .ai-tags-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .ai-tag {
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+    border: 1px solid var(--ai-border); background: var(--ai-bg); color: var(--ai);
+  }
+  .ai-tag.urgent { background: rgba(240,82,82,0.12); border-color: rgba(240,82,82,0.3); color: #f07070; }
+  .ai-tag.pro { background: rgba(79,142,247,0.12); border-color: rgba(79,142,247,0.3); color: #7cb0ff; }
+  .ai-tag.newsletter { background: rgba(52,199,123,0.12); border-color: rgba(52,199,123,0.3); color: #5de09b; }
+  .ai-tag.personal { background: rgba(240,165,42,0.12); border-color: rgba(240,165,42,0.3); color: #f5c060; }
+  .ai-tag.spam { background: rgba(136,136,148,0.12); border-color: rgba(136,136,148,0.3); color: var(--muted); }
+
+  .ai-reply-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .ai-use-btn {
+    padding: 7px 14px; background: var(--ai); border: none; border-radius: 7px;
+    color: #fff; font-family: var(--font); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .ai-use-btn:hover { opacity: 0.85; }
+  .ai-copy-btn {
+    padding: 7px 14px; background: none; border: 1px solid var(--ai-border);
+    border-radius: 7px; color: var(--ai); font-family: var(--font); font-size: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .ai-copy-btn:hover { background: var(--ai-bg); }
+
   /* ─── Compose Modal ─── */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
@@ -209,9 +293,9 @@
   }
   .modal-overlay.open { display: flex; }
   .compose-modal {
-    width: 540px; background: var(--surface); border: 1px solid var(--border2);
+    width: 560px; background: var(--surface); border: 1px solid var(--border2);
     border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6); max-height: 80vh;
   }
   .compose-header {
     padding: 12px 16px; background: var(--surface3); display: flex; align-items: center;
@@ -220,14 +304,14 @@
   .compose-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
   .compose-close:hover { color: var(--text); }
   .compose-field { padding: 10px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
-  .compose-field-label { font-size: 12px; color: var(--muted); min-width: 24px; }
+  .compose-field-label { font-size: 12px; color: var(--muted); min-width: 30px; }
   .compose-field-input {
     flex: 1; background: none; border: none; color: var(--text); font-family: var(--font);
     font-size: 13px; outline: none;
   }
   .compose-field-input::placeholder { color: var(--muted2); }
   .compose-body-area {
-    flex: 1; padding: 14px 16px; min-height: 200px; background: none; border: none;
+    flex: 1; padding: 14px 16px; min-height: 160px; background: none; border: none;
     color: var(--text); font-family: var(--font); font-size: 13px; outline: none; resize: none;
     line-height: 1.7;
   }
@@ -240,6 +324,19 @@
   }
   .send-btn:hover { opacity: 0.88; }
   .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* AI Compose assist */
+  .compose-ai-bar {
+    padding: 8px 16px; border-top: 1px solid var(--ai-border);
+    background: var(--ai-bg); display: flex; align-items: center; gap: 8px;
+  }
+  .compose-ai-label { font-size: 11px; color: var(--ai); font-weight: 500; display: flex; align-items: center; gap: 5px; }
+  .compose-ai-btn {
+    padding: 4px 10px; border: 1px solid var(--ai-border); background: none;
+    border-radius: 5px; color: var(--ai); font-family: var(--font); font-size: 11px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .compose-ai-btn:hover { background: rgba(167,139,250,0.15); }
 
   /* ─── Toast ─── */
   .toast {
@@ -264,16 +361,30 @@
 <div id="auth-screen">
   <div class="auth-card">
     <div class="auth-logo">✉️</div>
-    <h1 class="auth-title">Gmail Manager</h1>
-    <p class="auth-sub">Connectez-vous à votre compte Google pour gérer vos emails directement depuis cette interface.</p>
+    <h1 class="auth-title">Gmail Manager <span style="color:var(--ai);font-size:16px;">+ IA</span></h1>
+    <p class="auth-sub">Connectez-vous à votre compte Google pour gérer vos emails avec l'assistance de l'IA.</p>
 
     <div class="config-section">
       <div class="config-label">Client ID Google OAuth 2.0</div>
       <input class="config-input" id="client-id-input" type="text" placeholder="123456789-abc.apps.googleusercontent.com" />
     </div>
     <div class="config-section">
-      <div class="config-label">Redirect URI (doit correspondre à Google Console)</div>
-      <input class="config-input" id="redirect-uri-input" type="text" id="redirect-uri-input" />
+      <div class="config-label">Redirect URI</div>
+      <input class="config-input" id="redirect-uri-input" type="text" />
+    </div>
+
+    <div class="ai-section-divider">
+      <span class="ai-section-label">✦ Fonctionnalités IA</span>
+    </div>
+
+    <div class="ai-config-section">
+      <div class="ai-badge">✦ Propulsé par Claude</div>
+      <div class="config-label">Clé API Anthropic (optionnelle)</div>
+      <input class="config-input" id="anthropic-key-input" type="password" placeholder="sk-ant-..." />
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">
+        Résumé automatique · Réponse intelligente · Classification d'emails<br>
+        <a href="https://console.anthropic.com/" target="_blank" style="color:var(--ai);text-decoration:none;">Obtenir une clé API →</a>
+      </div>
     </div>
 
     <button class="btn-connect" id="connect-btn">
@@ -288,7 +399,7 @@
 
     <p class="auth-hint">
       Vous avez besoin d'un <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Client ID OAuth 2.0</a> dans Google Cloud Console.<br>
-      Activez l'API Gmail et ajoutez cette URL comme redirect URI autorisée.
+      Activez l'API Gmail et ajoutez cette URL comme redirect URI.
     </p>
   </div>
 </div>
@@ -299,7 +410,7 @@
   <aside class="sidebar">
     <div class="sidebar-header">
       <span class="sidebar-logo">✉️</span>
-      <span class="sidebar-title">Gmail</span>
+      <span class="sidebar-title">Gmail <span style="font-size:10px;color:var(--ai);background:var(--ai-bg);border:1px solid var(--ai-border);border-radius:10px;padding:1px 6px;vertical-align:middle;">IA</span></span>
     </div>
     <div class="sidebar-user">
       <div class="user-name" id="user-name">—</div>
@@ -394,6 +505,12 @@
       <input class="compose-field-input" id="compose-subject" type="text" placeholder="Sujet de votre message" />
     </div>
     <textarea class="compose-body-area" id="compose-body" placeholder="Rédigez votre message…"></textarea>
+    <div class="compose-ai-bar" id="compose-ai-bar">
+      <span class="compose-ai-label">✦ IA</span>
+      <button class="compose-ai-btn" onclick="aiImproveEmail()">✨ Améliorer</button>
+      <button class="compose-ai-btn" onclick="aiMakeFormal()">👔 Formaliser</button>
+      <button class="compose-ai-btn" onclick="aiMakeConcise()">✂️ Résumer</button>
+    </div>
     <div class="compose-footer">
       <button class="send-btn" id="send-btn" onclick="sendEmail()">
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M11.5 1.5L1.5 6.5L6 7.5L7 12L11.5 1.5Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/></svg>
@@ -411,29 +528,32 @@
 // ─── CONFIG ───────────────────────────────────────────
 const SCOPES = 'https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
 
 let accessToken = null;
+let anthropicKey = null;
 let emails = [];
 let currentFolder = 'INBOX';
 let currentEmail = null;
-let replyMode = false;
-let replyTo = null;
 
 // ─── INIT ───────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   const redirect = document.getElementById('redirect-uri-input');
-  redirect.value = 'https://jeremienoah2006-maker.github.io/gmail-manager/';
+  redirect.value = window.location.href.split('#')[0];
 
   const savedCid = localStorage.getItem('gmail_client_id');
   if (savedCid) document.getElementById('client-id-input').value = savedCid;
 
-  // Check if returning from OAuth
+  const savedKey = localStorage.getItem('anthropic_key');
+  if (savedKey) document.getElementById('anthropic-key-input').value = savedKey;
+
   const hash = window.location.hash;
   const params = new URLSearchParams(hash.replace('#', '?'));
   const token = params.get('access_token');
   if (token) {
     accessToken = token;
     window.location.hash = '';
+    anthropicKey = localStorage.getItem('anthropic_key') || null;
     initApp();
   }
 
@@ -443,11 +563,12 @@ document.addEventListener('DOMContentLoaded', () => {
 function startOAuth() {
   const clientId = document.getElementById('client-id-input').value.trim();
   const redirectUri = document.getElementById('redirect-uri-input').value.trim();
+  const aKey = document.getElementById('anthropic-key-input').value.trim();
 
   if (!clientId) { showToast('Veuillez entrer votre Client ID', 'error'); return; }
 
   localStorage.setItem('gmail_client_id', clientId);
-  localStorage.setItem('gmail_redirect', redirectUri);
+  if (aKey) localStorage.setItem('anthropic_key', aKey);
 
   const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   authUrl.searchParams.set('client_id', clientId);
@@ -463,7 +584,10 @@ function startOAuth() {
 async function initApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
-  document.getElementById('compose-btn-sidebar').addEventListener('click', openCompose);
+  document.getElementById('compose-btn-sidebar').addEventListener('click', () => openCompose());
+
+  // Show/hide AI compose bar
+  if (!anthropicKey) document.getElementById('compose-ai-bar').style.display = 'none';
 
   await loadUserProfile();
   await loadEmails();
@@ -600,7 +724,7 @@ async function openEmail(id) {
     const body = extractBody(msg.payload);
     const attachments = findAttachments(msg.payload);
 
-    currentEmail = { id, from, to, subject, body };
+    currentEmail = { id, from, fromName, fromEmail, to, subject, body: body.text };
 
     // Mark as read
     const emailItem = document.querySelector(`.email-item[data-id="${id}"]`);
@@ -608,6 +732,29 @@ async function openEmail(id) {
       emailItem.classList.remove('unread');
       gmailFetch(`/messages/${id}/modify`, { method: 'POST', body: JSON.stringify({ removeLabelIds: ['UNREAD'] }) }).catch(()=>{});
     }
+
+    const aiPanelHtml = anthropicKey ? `
+      <div class="ai-panel" id="ai-panel">
+        <div class="ai-panel-header">
+          <div class="ai-panel-title">
+            <span class="ai-sparkle">✦</span>
+            Assistant IA
+          </div>
+          <div class="ai-actions">
+            <button class="ai-btn" id="ai-btn-summary" onclick="aiSummarize()">
+              📋 Résumer
+            </button>
+            <button class="ai-btn" id="ai-btn-classify" onclick="aiClassify()">
+              🏷️ Classer
+            </button>
+            <button class="ai-btn" id="ai-btn-reply" onclick="aiReply()">
+              ✍️ Répondre
+            </button>
+          </div>
+        </div>
+        <div class="ai-result" id="ai-result"></div>
+      </div>
+    ` : '';
 
     detail.innerHTML = `
       <div class="detail-header">
@@ -630,12 +777,15 @@ async function openEmail(id) {
         </div>
         ${to ? `<div style="margin-top:6px;font-size:12px;color:var(--muted)">À : ${escHtml(to)}</div>` : ''}
       </div>
-      <div class="detail-body" id="detail-body-container">
-        <div class="detail-body-text">${escHtml(body.text)}</div>
+      <div class="detail-scroll">
+        <div class="detail-body">
+          <div class="detail-body-text">${escHtml(body.text)}</div>
+        </div>
+        ${attachments.length ? `<div class="detail-attachments">${attachments.map(a => `
+          <div class="attachment"><span class="attach-icon">📎</span><span>${escHtml(a.filename)}</span></div>
+        `).join('')}</div>` : ''}
+        ${aiPanelHtml}
       </div>
-      ${attachments.length ? `<div class="detail-attachments">${attachments.map(a => `
-        <div class="attachment"><span class="attach-icon">📎</span><span>${escHtml(a.filename)}</span></div>
-      `).join('')}</div>` : ''}
     `;
 
   } catch(e) {
@@ -643,10 +793,234 @@ async function openEmail(id) {
   }
 }
 
+// ─── AI FUNCTIONS ───────────────────────────────────────────
+async function callClaude(prompt, systemPrompt = '') {
+  if (!anthropicKey) {
+    showToast('Clé API Anthropic requise pour l\'IA', 'error');
+    return null;
+  }
+
+  const body = {
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 1000,
+    messages: [{ role: 'user', content: prompt }]
+  };
+  if (systemPrompt) body.system = systemPrompt;
+
+  const res = await fetch(ANTHROPIC_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error?.message || 'Erreur API Anthropic');
+  }
+
+  const data = await res.json();
+  return data.content?.[0]?.text || '';
+}
+
+function setAiLoading(btnId) {
+  const btns = ['ai-btn-summary', 'ai-btn-classify', 'ai-btn-reply'];
+  btns.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = true;
+  });
+  const btn = document.getElementById(btnId);
+  if (btn) btn.classList.add('active');
+}
+
+function clearAiLoading() {
+  const btns = ['ai-btn-summary', 'ai-btn-classify', 'ai-btn-reply'];
+  btns.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) { btn.disabled = false; btn.classList.remove('active'); }
+  });
+}
+
+function showAiResult(html) {
+  const result = document.getElementById('ai-result');
+  if (result) { result.innerHTML = html; result.classList.add('visible'); }
+}
+
+async function aiSummarize() {
+  if (!currentEmail) return;
+  setAiLoading('ai-btn-summary');
+
+  showAiResult(`
+    <div class="ai-result-label"><span class="spinner-sm"></span> Résumé en cours…</div>
+  `);
+  document.getElementById('ai-result').classList.add('visible');
+
+  try {
+    const text = await callClaude(
+      `Voici un email reçu :\n\nDe : ${currentEmail.fromName} <${currentEmail.fromEmail}>\nObjet : ${currentEmail.subject}\n\nContenu :\n${currentEmail.body.slice(0, 3000)}`,
+      'Tu es un assistant email. Fais un résumé concis de cet email en 2-3 phrases maximum, en français. Capture les points essentiels et toute action requise. Réponds directement sans introduction.'
+    );
+    if (text) {
+      showAiResult(`
+        <div class="ai-result-label">📋 Résumé</div>
+        <div class="ai-result-text">${escHtml(text)}</div>
+      `);
+    }
+  } catch(e) {
+    showAiResult(`<div class="ai-result-text muted">Erreur : ${escHtml(e.message)}</div>`);
+  }
+
+  clearAiLoading();
+}
+
+async function aiClassify() {
+  if (!currentEmail) return;
+  setAiLoading('ai-btn-classify');
+
+  showAiResult(`
+    <div class="ai-result-label"><span class="spinner-sm"></span> Classification en cours…</div>
+  `);
+  document.getElementById('ai-result').classList.add('visible');
+
+  try {
+    const text = await callClaude(
+      `Analyse cet email et classifie-le.\n\nDe : ${currentEmail.fromName} <${currentEmail.fromEmail}>\nObjet : ${currentEmail.subject}\nExtrait : ${currentEmail.body.slice(0, 1000)}`,
+      `Tu es un assistant email. Analyse cet email et réponds UNIQUEMENT avec un objet JSON valide (sans markdown, sans backticks) contenant :
+{
+  "categories": ["pro", "personnel", "newsletter", "urgent", "spam", "notification", "facture", "reunion"],
+  "priorite": "haute|moyenne|basse",
+  "action_requise": true/false,
+  "resume_action": "description courte si action requise, sinon null",
+  "sentiment": "positif|neutre|negatif"
+}
+Choisis les 1-3 catégories les plus pertinentes parmi celles proposées.`
+    );
+
+    if (text) {
+      let parsed;
+      try {
+        const clean = text.replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(clean);
+      } catch(e) {
+        throw new Error('Classification invalide');
+      }
+
+      const catLabels = { pro:'pro', personnel:'personnel', newsletter:'newsletter', urgent:'urgent', spam:'spam', notification:'notif', facture:'facture', reunion:'réunion' };
+      const prioriteColor = { haute: 'urgent', moyenne: 'pro', basse: 'spam' };
+      const sentimentEmoji = { positif: '😊', neutre: '😐', negatif: '😟' };
+
+      const tagsHtml = (parsed.categories || []).map(c =>
+        `<span class="ai-tag ${c}">${catLabels[c] || c}</span>`
+      ).join('');
+
+      showAiResult(`
+        <div class="ai-result-label">🏷️ Classification</div>
+        <div class="ai-tags-row">${tagsHtml}
+          <span class="ai-tag ${prioriteColor[parsed.priorite] || ''}">⚡ ${parsed.priorite}</span>
+          <span class="ai-tag">${sentimentEmoji[parsed.sentiment] || ''} ${parsed.sentiment}</span>
+        </div>
+        ${parsed.action_requise && parsed.resume_action ? `
+          <div style="margin-top:10px;padding:8px 12px;background:rgba(240,165,42,0.08);border:1px solid rgba(240,165,42,0.2);border-radius:7px;font-size:12px;color:#f5c060;">
+            ⚡ Action requise : ${escHtml(parsed.resume_action)}
+          </div>
+        ` : '<div style="margin-top:8px;font-size:12px;color:var(--muted)">Aucune action requise</div>'}
+      `);
+    }
+  } catch(e) {
+    showAiResult(`<div class="ai-result-text muted">Erreur : ${escHtml(e.message)}</div>`);
+  }
+
+  clearAiLoading();
+}
+
+async function aiReply() {
+  if (!currentEmail) return;
+  setAiLoading('ai-btn-reply');
+
+  showAiResult(`
+    <div class="ai-result-label"><span class="spinner-sm"></span> Rédaction d'une réponse…</div>
+  `);
+  document.getElementById('ai-result').classList.add('visible');
+
+  try {
+    const text = await callClaude(
+      `Email reçu de ${currentEmail.fromName} <${currentEmail.fromEmail}> :\nObjet : ${currentEmail.subject}\n\n${currentEmail.body.slice(0, 3000)}`,
+      `Tu es un assistant email professionnel. Rédige une réponse appropriée à cet email en français. 
+La réponse doit être :
+- Professionnelle mais naturelle
+- Adaptée au ton de l'email reçu
+- Concise (3-6 phrases)
+- Sans mention de l'IA ni de l'assistant
+- Commencer directement par le corps du message (pas de "Objet:" ni d'en-tête)
+Génère uniquement le corps de la réponse.`
+    );
+
+    if (text) {
+      const escapedText = escHtml(text);
+      showAiResult(`
+        <div class="ai-result-label">✍️ Réponse suggérée</div>
+        <div class="ai-result-text" id="ai-reply-text">${escapedText}</div>
+        <div class="ai-reply-actions">
+          <button class="ai-use-btn" onclick="useAiReply()">↩ Utiliser cette réponse</button>
+          <button class="ai-copy-btn" onclick="copyAiReply()">📋 Copier</button>
+        </div>
+      `);
+      // Store raw text for use
+      window._aiReplyText = text;
+    }
+  } catch(e) {
+    showAiResult(`<div class="ai-result-text muted">Erreur : ${escHtml(e.message)}</div>`);
+  }
+
+  clearAiLoading();
+}
+
+function useAiReply() {
+  if (!window._aiReplyText || !currentEmail) return;
+  openReplyWithBody(currentEmail.id, window._aiReplyText);
+}
+
+function copyAiReply() {
+  if (!window._aiReplyText) return;
+  navigator.clipboard.writeText(window._aiReplyText).then(() => showToast('Copié dans le presse-papier ✓', 'success'));
+}
+
+// ─── AI COMPOSE ASSIST ───────────────────────────────────────────
+async function aiTransformEmail(instruction) {
+  const body = document.getElementById('compose-body').value.trim();
+  const subject = document.getElementById('compose-subject').value.trim();
+  if (!body) { showToast('Rédigez d\'abord votre message', 'error'); return; }
+  if (!anthropicKey) { showToast('Clé API Anthropic requise', 'error'); return; }
+
+  const btns = document.querySelectorAll('.compose-ai-btn');
+  btns.forEach(b => b.disabled = true);
+
+  try {
+    const result = await callClaude(
+      `${instruction}\n\nObjet : ${subject}\nMessage :\n${body}`,
+      'Tu es un assistant de rédaction email. Transforme le message selon la consigne. Réponds uniquement avec le nouveau corps du message, sans introduction ni explication.'
+    );
+    if (result) {
+      document.getElementById('compose-body').value = result;
+      showToast('Message transformé par l\'IA ✦', 'success');
+    }
+  } catch(e) {
+    showToast('Erreur IA: ' + e.message, 'error');
+  }
+
+  btns.forEach(b => b.disabled = false);
+}
+
+function aiImproveEmail() { aiTransformEmail('Améliore et corrige ce message email pour qu\'il soit plus clair et professionnel, tout en gardant le sens original.'); }
+function aiMakeFormal() { aiTransformEmail('Réécris ce message dans un style formel et professionnel.'); }
+function aiMakeConcise() { aiTransformEmail('Réécris ce message de façon plus concise et directe en gardant les informations essentielles.'); }
+
 // ─── COMPOSE / REPLY ───────────────────────────────────────────
 function openCompose(replyData = null) {
-  replyMode = !!replyData;
-  replyTo = replyData;
   document.getElementById('compose-to').value = replyData?.to || '';
   document.getElementById('compose-cc').value = '';
   document.getElementById('compose-subject').value = replyData?.subject ? 'Re: ' + replyData.subject.replace(/^Re:\s*/i,'') : '';
@@ -659,6 +1033,16 @@ function openReply(id) {
   const email = emails.find(e => e.id === id) || currentEmail;
   if (!email) return;
   openCompose({ to: parseFromEmail(email.from), subject: email.subject, body: email.snippet });
+}
+
+function openReplyWithBody(id, body) {
+  const email = emails.find(e => e.id === id) || currentEmail;
+  if (!email) return;
+  openCompose({ to: parseFromEmail(email.from), subject: email.subject, body: body });
+  // Replace the body after openCompose sets it with quote
+  setTimeout(() => {
+    document.getElementById('compose-body').value = body;
+  }, 50);
 }
 
 function openForward(id) {
@@ -778,7 +1162,6 @@ function extractBody(payload) {
   if (!text && payload?.body?.data) {
     try { text = atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/')); } catch(e){}
   }
-  // Decode UTF-8
   try { text = decodeURIComponent(escape(text)); } catch(e) {}
   return { text: text || '(Corps non disponible)' };
 }
